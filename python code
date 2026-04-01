@@ -1,0 +1,112 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+# Load the dataset
+df = pd.read_csv('population.csv')
+latest_year = df['Year'].max()
+
+# Explicitly define Main Countries to focus analysis
+main_countries = [
+    'India', 'China', 'United States', 'Indonesia', 'Pakistan',
+    'Nigeria', 'Brazil', 'Bangladesh', 'Russian Federation', 'Ethiopia',
+    'Mexico', 'Japan', 'Philippines', 'Egypt, Arab Rep.', 'Vietnam'
+]
+main_df = df[df['Country Name'].isin(main_countries)].copy()
+sns.set_theme(style="whitegrid")
+
+# --- GENERATING 12 VISUALIZATIONS ---
+
+# 1. Line Chart: Top 5 Giants
+plt.figure(figsize=(10, 5))
+top5 = ['India', 'China', 'United States', 'Indonesia', 'Pakistan']
+sns.lineplot(data=main_df[main_df['Country Name'].isin(top5)], x='Year', y='Value', hue='Country Name', marker='o', markersize=3)
+plt.title('1. Population Trends of Global Giants (1960-2024)')
+plt.savefig('1_line.png')
+
+# 2. Bar Chart: Ranking of 15 Main Countries
+plt.figure(figsize=(10, 6))
+sns.barplot(data=main_df[main_df['Year'] == latest_year].sort_values('Value', ascending=False), x='Value', y='Country Name', hue='Country Name', palette='viridis', legend=False)
+plt.title(f'2. Population Ranking of Main Countries ({latest_year})')
+plt.savefig('2_bar.png')
+
+# 3. Histogram: Global Distribution with Focus
+plt.figure(figsize=(10, 5))
+aggregates = ['World', 'High income', 'Middle income', 'Low income']
+all_countries = df[~df['Country Name'].isin(aggregates)]
+sns.histplot(all_countries[all_countries['Year'] == latest_year]['Value'], bins=30, kde=True, color='gray')
+plt.yscale('log')
+plt.title('3. Global Population Distribution (Log Scale)')
+plt.savefig('3_hist.png')
+
+# 4. Box Plot: Population Variability by Era
+main_df['Era'] = pd.cut(main_df['Year'], bins=[1959, 1980, 2000, 2024], labels=['1960-1980', '1981-2000', '2001-2024'])
+plt.figure(figsize=(10, 5))
+sns.boxplot(data=main_df, x='Era', y='Value', hue='Era', palette='pastel', legend=False)
+plt.yscale('log')
+plt.title('4. Population Variability of Main Countries by Era')
+plt.savefig('4_box.png')
+
+plt.figure(figsize=(12, 9))
+colors = sns.color_palette("muted", len(labels))
+
+plt.pie(values,
+        labels=labels,
+        autopct='%1.1f%%',
+        startangle=140,
+        colors=colors,
+        explode=[0.05]*10 + [0], # Explode only the top 10 slices
+        shadow=True,
+        textprops={'fontsize': 11})
+
+plt.title(f'Global Population Share ({latest_year})\nTop 10 Main Countries vs. Others', fontsize=16, pad=20)
+plt.savefig('main_countries_pie_chart.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+# 6. Scatter Plot: Growth Rate vs 1960 Size
+growth_data = []
+for country in main_countries:
+    try:
+        y1960 = main_df[(main_df['Country Name'] == country) & (main_df['Year'] == 1960)]['Value'].values[0]
+        y2024 = main_df[(main_df['Country Name'] == country) & (main_df['Year'] == latest_year)]['Value'].values[0]
+        rate = (y2024 - y1960) / y1960 * 100
+        growth_data.append({'Country': country, '1960_Pop': y1960, 'Growth_Rate': rate})
+    except: pass
+growth_df = pd.DataFrame(growth_data)
+plt.figure(figsize=(10, 5))
+sns.scatterplot(data=growth_df, x='1960_Pop', y='Growth_Rate', hue='Country', s=150)
+plt.xscale('log')
+plt.title('6. Growth Rate (%) vs Population in 1960')
+plt.savefig('6_scatter.png')
+
+# 7. Heatmap: Annual Growth Rate % (Last 20 Years)
+pivot_growth = main_df[main_df['Country Name'].isin(top5)].pivot(index='Country Name', columns='Year', values='Value').pct_change(axis=1).dropna(axis=1) * 100
+plt.figure(figsize=(12, 4))
+sns.heatmap(pivot_growth.iloc[:, -20:], annot=True, cmap='RdYlGn', fmt=".1f")
+plt.title('7. Annual Growth Rate % (Last 20 Years)')
+plt.savefig('7_heat.png')
+
+# 8. Area Chart: Cumulative Growth of 5 Major Nations
+plt.figure(figsize=(10, 5))
+area_data = main_df[main_df['Country Name'].isin(['India', 'China', 'United States', 'Brazil', 'Russian Federation'])].pivot(index='Year', columns='Country Name', values='Value')
+area_data.plot.area(ax=plt.gca(), alpha=0.4)
+plt.title('8. Cumulative Growth of 5 Major Nations')
+plt.savefig('8_area.png')
+
+# 9. Violin Plot: Density Shift of Main Countries
+plt.figure(figsize=(10, 5))
+sns.violinplot(data=main_df[main_df['Year'].isin([1960, 1990, 2024])], x='Year', y='Value', palette='muted', hue='Year', legend=False)
+plt.yscale('log')
+plt.title('9. Density Shift of Main Countries (1960-2024)')
+plt.savefig('9_violin.png')
+
+# 10. KDE Plot: Population Concentration
+plt.figure(figsize=(10, 5))
+for c in ['Nigeria', 'Pakistan', 'Russian Federation']:
+    sns.kdeplot(main_df[main_df['Country Name'] == c]['Value'], label=c, fill=True)
+plt.title('10. Population Concentration (Fast vs Slow Growth)')
+plt.legend()
+plt.savefig('10_kde.png')
+
+plt.show()
